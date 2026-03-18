@@ -1,0 +1,130 @@
+---
+title: "Problem Set: Vectors, Strings, Factors, and Dates"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    code-overflow: wrap
+editor: visual
+---
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(nycflights13)
+library(lubridate)
+```
+
+------------------------------------------------------------------------
+
+## Question 1 — Exploring the Star Wars Universe
+
+The `dplyr::starwars` dataset (available as soon as you load `tidyverse`) contains physical and biographical information on characters from the Star Wars films. Start by running `View(starwars)` and ?starwars to get oriented.
+
+The code below stores the characters with blue eyes in the "blue_eyes" dataframe, and the characters with red eyes in the "red_eyes" dataframe. There is one character with both blue and red eyes. Use a logical vector approach again with str_detect to find out which one. Hint: one way to do it is with the logical & operator, which returns all rows for which multiple criteria are met
+
+```{r}
+view(starwars)
+
+# Characters with "blue" in eye_color
+blue_eyes <- starwars |>
+  filter(str_detect(eye_color, "blue"))
+blue_eyes
+
+# Characters with "brown" in eye_color
+red_eyes <- starwars |>
+  filter(str_detect(eye_color, "red"))
+red_eyes
+
+#find charachter with both
+both_colors <- starwars %>%
+    filter(str_detect(eye_color, "red") & str_detect(eye_color, "blue"))
+both_colors
+
+```
+
+## Question 2 — American Unemployment Over Time
+
+The `ggplot2::economics` dataset contains monthly U.S. macroeconomic indicators from 1967 to 2015. The `date` column is already a proper `Date` object.
+
+**(a)** The goal here is to see how the unemployment rate changes over time. Start by plotting the number of unemployed people over time:
+
+```{r}
+  ggplot(economics, aes(x = date, y = unemploy)) +
+  geom_line()
+```
+
+Now use lubridate to plot only the unemployment data from Jan 1st 2008 to Jan 1st 2009. Hint: use the lubridate function ymd to specify date windows, and use a similar logical criteria to in Q1, above
+
+```{r}
+economics %>%
+  filter(date >= ymd("2008-01-01") & date <= ymd("2009-01-01")) %>%
+  ggplot(aes(x = date, y = unemploy)) +
+  geom_line() 
+```
+
+What do you notice about the format of the date variable on the x axis of this plot vs the plot over the entire time window. What do you think is happening here?
+
+**Your answer:** It is now using the months and year instead of just the year. This is likely because most of the dates are within the same year and R automatically added the months to have more than just 2008 and 2009.
+
+Now use mutate to calculate a new variable - the monthly unemployment rate as `unemploy / pop * 100`. Make a plot over the whole time period as in part 1 of this question.
+
+```{r}
+economics_new <- economics %>%
+  mutate(unemploy_rate = (unemploy / pop) * 100)
+
+ggplot(economics_new, aes(x = date, y = unemploy_rate)) +
+  geom_line()
+```
+
+Do you draw different conclusions now about how unemployment has changed over these 40 years? what explains the difference?
+
+**your answer:** Yes, since the population of the US increased over thee time period the original graph was showing more unemployed because there were more people in general. Then new graph is more accurate and shows that 1980 actually had the highest unemployment in comparison to 2010.
+
+## Question 3 — Flight Status and the Value of Factors
+
+Run the code below to create a `status` variable that categorises each flight by how early or late it arrived.
+
+```{r}
+flight_status <- flights |>
+  mutate(
+    status = case_when(
+      is.na(arr_delay)      ~ "cancelled",
+      arr_delay < -30       ~ "very early",
+      arr_delay < -15       ~ "early",
+      abs(arr_delay) <= 15  ~ "on time",
+      arr_delay < 60        ~ "late",
+      arr_delay < Inf       ~ "very late",
+    ),
+    .keep = "used"
+  )
+```
+
+**(a)** Without converting `status` to a factor, run the followong code to create a bar chart showing the count of flights in each category. What do you notice about the ordering of the bars? Is it meaningful?
+
+```{r}
+ggplot(flight_status, aes(x = status)) +
+  geom_bar()
+```
+
+**your answer:** The bars are in alphabetical order. This isn't very meaningful because it has the early and very early far away from each other, same with late. It would make more logical sense to order them "chronologically"
+
+**(b)** Convert `status` to a factor with levels in a natural severity order: `"very early"`, `"early"`, `"on time"`, `"late"`, `"very late"`, `"cancelled"`. Save it back into `flight_status` and recreate the bar chart. How does the chart change?
+
+```{r}
+
+times <- c(
+  "very early", "early", "on time", "late", "very late", "canceled"
+)
+
+flight_status$new_status <- factor(flight_status$status, levels = times)
+flight_organized
+
+ggplot(flight_status, aes(x = new_status)) +
+  geom_bar()
+```
+
+**your answer:** It is now in a logical order where you can clearly see that most flights are on time and more are early than late.
